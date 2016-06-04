@@ -209,7 +209,7 @@ fn it_decodes_some_numbers() {
 
 #[test]
 fn it_encodes_and_decodes_some_numbers() {
-  for x in -1000000..1000000 {
+  for x in -100000..100000 {
     assert!(encode(x).and_then(|x| decode(&x)) == Some(x));
   }
 }
