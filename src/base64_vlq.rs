@@ -36,7 +36,7 @@ fn it_defines_sane_constants() {
  *   1 becomes 2 (10 binary), -1 becomes 3 (11 binary)
  *   2 becomes 4 (100 binary), -2 becomes 5 (101 binary)
  */
-fn to_vql(value: i32) -> i32 {
+pub fn to_vql(value: i32) -> i32 {
   if value < 0 {
     ((-value) << 1) + 1
   } else {
@@ -58,7 +58,7 @@ fn it_converts_to_vql() {
  *   2 (10 binary) becomes 1, 3 (11 binary) becomes -1
  *   4 (100 binary) becomes 2, 5 (101 binary) becomes -2
  */
-fn from_vql(value: i32) -> i32 {
+pub fn from_vql(value: i32) -> i32 {
   let is_neative = (value & 1) == 1;
   let shifted = value >> 1;
   if is_neative {
@@ -74,13 +74,6 @@ fn it_converts_from_vql() {
   assert!(from_vql(3) == -1);
   assert!(from_vql(4) == 2);
   assert!(from_vql(5) == -2);
-}
-
-#[test]
-fn it_convert_to_vql_and_back() {
-  for x in -1000000..1000000 {
-    assert!(from_vql(to_vql(x)) == x);
-  }
 }
 
 /**
@@ -205,11 +198,4 @@ fn it_decodes_some_numbers() {
   assert_decodes_to!("u28H", 129383);
   assert_decodes_to!("k1mS", 298322);
   assert_decodes_to!("gkh9B", 1000000);
-}
-
-#[test]
-fn it_encodes_and_decodes_some_numbers() {
-  for x in -100000..100000 {
-    assert!(encode(x).and_then(|x| decode(&x)) == Some(x));
-  }
 }
