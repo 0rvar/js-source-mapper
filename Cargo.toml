@@ -1,0 +1,7 @@
+[package]
+name = "jssourcemapper"
+version = "0.1.0"
+authors = ["Orvar Segerström <orvarsegerstrom@gmail.com>"]
+
+[dependencies]
+rustc-serialize = "0.3"
