@@ -2,6 +2,13 @@
 name = "js-source-mapper"
 version = "0.1.0"
 authors = ["Orvar Segerström <orvarsegerstrom@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/awestroke/js-source-mapper"
+homepage = "https://github.com/awestroke/js-source-mapper"
+documentation = "http://awestroke.github.io/js-source-mapper/js_source_mapper/"
+description = """
+A rust library for consuming JavaScript source maps with a focus on performance. Supports Source Map revision 3.
+"""
 
 [dependencies]
 rustc-serialize = "0.3"
