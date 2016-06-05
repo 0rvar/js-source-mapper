@@ -5,8 +5,10 @@ Supports [Source Map revision 3](https://docs.google.com/document/d/1U1RGAehQwRy
 
 [![Build Status](https://travis-ci.org/awestroke/js-source-mapper.svg?branch=master)](https://travis-ci.org/awestroke/js-source-mapper)
 [![Coverage Status](https://coveralls.io/repos/github/awestroke/js-source-mapper/badge.svg?branch=master)](https://coveralls.io/github/awestroke/js-source-mapper?branch=master)
-[![Crates.io](http://meritbadge.herokuapp.com/js-source-mapper)](https://crates.io/js-source-mapper)
+[![Crates.io](http://meritbadge.herokuapp.com/js-source-mapper)](https://crates.io/crates/js-source-mapper)
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
+[Documentation](http://awestroke.github.io/js-source-mapper)
 
 ## Usage
 
