@@ -1,5 +1,5 @@
 [package]
-name = "jssourcemapper"
+name = "js-source-mapper"
 version = "0.1.0"
 authors = ["Orvar Segerström <orvarsegerstrom@gmail.com>"]
 
