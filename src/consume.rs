@@ -91,6 +91,9 @@ fn parse_mappings(source_map: &SourceMap) -> Result<Cache, String>{
     return Err("Only Source Map version 3 is implemented".into())
   }
 
+  let sources_length = source_map.sources.len() as u32;
+  let names_length = source_map.names.len() as u32;
+
   let mut generated_mappings: Vec<Mapping> = Vec::new();
 
   let mut generated_line: u32 = 0;
@@ -147,7 +150,11 @@ fn parse_mappings(source_map: &SourceMap) -> Result<Cache, String>{
       if fields.len() > 1 {
         // Original source.
         previous_source = ((previous_source as i32) + fields[1]) as u32;
-        mapping.source = source_map.sources[previous_source as usize].to_owned();
+        if previous_source < sources_length {
+          mapping.source = source_map.sources[previous_source as usize].to_owned();
+        } else {
+          return Err(format!("Invalid source map: reference to source index {} when source list length is {}", previous_source, sources_length));
+        }
 
         // Original line.
         previous_original_line = ((previous_original_line as i32) + fields[2]) as u32;
@@ -161,7 +168,11 @@ fn parse_mappings(source_map: &SourceMap) -> Result<Cache, String>{
         if fields.len() > 4 {
           // Original name.
           previous_name = ((previous_name as i32) + fields[4]) as u32;
-          mapping.name = source_map.names[previous_name as usize].to_owned();
+          if previous_name < names_length {
+            mapping.name = source_map.names[previous_name as usize].to_owned();
+          } else {
+            return Err(format!("Invalid source map: reference to name index {} when name list length is {}", previous_name, names_length));
+          }
         }
       }
 
@@ -341,5 +352,51 @@ fn test_source_map_issue_72_duplicate_names() {
     };
     let actual = cache.mapping_for_generated_position(6, 6);
     assert_equal_mappings!(actual, expected);
+  }
+}
+
+#[test]
+fn it_allows_omitting_source_root() {
+  let cache_result: Result<Cache, String> = consume(r#"{
+    "version": 3,
+    "file": "foo.js",
+    "sources": ["source.js"],
+    "names": ["name1", "name1", "name3"],
+    "mappings": ";EAACA;;IAEEA;;MAEEE"
+  }"#);
+  match cache_result {
+    Ok(_) => {},
+    Err(s) => panic!(format!("Error due to omitting: '{}'", s))
+  }
+}
+
+#[test]
+fn it_rejects_older_source_map_revisions() {
+  let cache_result = consume(r#"{
+    "version": 2,
+    "file": "",
+    "sources": ["source.js"],
+    "names": ["name1", "name1", "name3"],
+    "mappings": ";EAACA;;IAEEA;;MAEEE",
+    "sourceRoot": "http://example.com"
+  }"#);
+  match cache_result {
+    Ok(_) => panic!("Source Map revision < 3 should be rejected"),
+    Err(_) => {}
+  }
+}
+
+#[test]
+fn it_does_not_panic_due_to_malformed_source_maps() {
+  let cache_result = consume(r#"{
+    "version": 3,
+    "file": "",
+    "sources": [],
+    "names": [],
+    "mappings": ";EAACA;;IAEEA;;MAEEE"
+  }"#);
+  match cache_result {
+    Ok(_) => panic!("Invalid source maps should be rejected"),
+    Err(_) => {}
   }
 }
