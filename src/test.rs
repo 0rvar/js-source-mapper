@@ -15,7 +15,7 @@ fn quickcheck_base64_vlq_converts_to_vql_and_back() {
 #[test]
 fn quickcheck_base64_vlq_encodes_and_decodes_some_numbers() {
   fn prop(x: i32) -> bool {
-    base64_vlq::encode(x).and_then(|x| base64_vlq::decode(&x)) == Some(x)
+    base64_vlq::encode(x).and_then(|x| base64_vlq::decode(&x)).unwrap().0 == x
   }
   quickcheck(prop as fn(i32) -> bool);
 }
