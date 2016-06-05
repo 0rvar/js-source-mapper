@@ -1,5 +1,4 @@
 use std::cmp::Ordering;
-use std::error::Error;
 
 use rustc_serialize::json;
 
@@ -15,7 +14,7 @@ struct SourceMap {
   sources: Vec<String>,
   names: Vec<String>,
   sourceRoot: Option<String>,
-  mappings: Vec<u8>,
+  mappings: String,
   file: Option<String>
 
   // We skip this. Keeping megabytes of data that we do not care about
@@ -23,47 +22,27 @@ struct SourceMap {
   //sourcesContent: Option<vec<String>>,
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Debug)]
 struct CodePosition {
   line: u32,
   column: u32
 }
 
-#[derive(Eq)]
-struct Mapping {
+#[derive(Eq, PartialEq, Debug)]
+pub struct Mapping {
   generated: CodePosition,
   original: CodePosition,
   source: String,
   name: String
 }
 
-impl PartialEq for Mapping {
-  #[inline]
-  fn eq(&self, other: &Self) -> bool {
-    self.generated == other.generated
-  }
-}
-
-impl Ord for Mapping {
-  fn cmp(&self, other: &Self) -> Ordering {
-    (self.generated.line, &self.generated.column)
-      .cmp(&(other.generated.line, &other.generated.column))
-  }
-}
-
-impl PartialOrd for Mapping {
-  fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-    Some((self.generated.line, &self.generated.column)
-      .cmp(&(other.generated.line, &other.generated.column)))
-  }
-}
-
 pub struct Cache {
-  generated_mappings: Vec<Mapping>
+  generated_mappings: Vec<Mapping>,
+  pub source_root: String
 }
 
 /*
- * consume parses a SourceMap into a cache that can be queries for mappings
+ * consume parses a SourceMap into a cache that can be queried for mappings
  *
  * The only parameter is the raw source map as a JSON string.
  * According to the spec, source maps have the following attributes:
@@ -92,7 +71,7 @@ pub struct Cache {
 pub fn consume(map: &str) -> Result<Cache, String> {
   let source_map: SourceMap = match json::decode(map) {
     Ok(x) => x,
-    Err(err) => return Err(err.description().into())
+    Err(err) => return Err(format!("{}", err))
   };
 
   parse_mappings(&source_map)
@@ -111,7 +90,7 @@ fn parse_mappings(source_map: &SourceMap) -> Result<Cache, String>{
   let mut previous_source: u32 = 0;
   let mut previous_name: u32 = 0;
 
-  for line in source_map.mappings.split(|&x| x == (';' as u8)) {
+  for line in source_map.mappings.as_bytes().split(|&x| x == (';' as u8)) {
     generated_line += 1;
     let mut previous_generated_column: u32 = 0;
 
@@ -127,6 +106,10 @@ fn parse_mappings(source_map: &SourceMap) -> Result<Cache, String>{
           },
           None => return Err("Invalid VLQ mapping field".into())
         };
+      }
+
+      if fields.len() < 1 {
+        continue;
       }
 
       if fields.len() == 2 {
@@ -155,7 +138,7 @@ fn parse_mappings(source_map: &SourceMap) -> Result<Cache, String>{
       if fields.len() > 1 {
         // Original source.
         previous_source = ((previous_source as i32) + fields[1]) as u32;
-        mapping.source = source_map.names[previous_source as usize].to_owned();
+        mapping.source = source_map.sources[previous_source as usize].to_owned();
 
         // Original line.
         previous_original_line = ((previous_original_line as i32) + fields[2]) as u32;
@@ -177,33 +160,158 @@ fn parse_mappings(source_map: &SourceMap) -> Result<Cache, String>{
     }
   }
 
-  generated_mappings.sort();
+  fn sort_key(mapping: &Mapping) -> (u32, u32) {
+    (mapping.generated.line, mapping.generated.column)
+  }
+  generated_mappings.sort_by(|a, b| sort_key(a).cmp(&sort_key(b)));
+
   Ok(Cache {
-    generated_mappings: generated_mappings
+    generated_mappings: generated_mappings,
+    source_root: match &source_map.sourceRoot {
+      &Some(ref x) => x.to_owned(),
+      &None => "".into()
+    }
   })
 }
 
-/*
- * Returns the original source, line, and column information for the generated
- * source's line and column positions provided. The only argument is an object
- * with the following properties:
- *
- *   - line: The line number in the generated source.
- *   - column: The column number in the generated source.
- *   - bias: Either 'SourceMapConsumer.GREATEST_LOWER_BOUND' or
- *     'SourceMapConsumer.LEAST_UPPER_BOUND'. Specifies whether to return the
- *     closest element that is smaller than or greater than the one we are
- *     searching for, respectively, if the exact element cannot be found.
- *     Defaults to 'SourceMapConsumer.GREATEST_LOWER_BOUND'.
- *
- * and an object is returned with the following properties:
- *
- *   - source: The original source file, or null.
- *   - line: The line number in the original source, or null.
- *   - column: The column number in the original source, or null.
- *   - name: The original identifier, or null.
- */
 
-//fn originalPositionFor(line: u32, column: u32) -> CodePosition {
-  // binary search
-//}
+impl Cache {
+  /*
+   * Returns the original source, line, and column information for the generated
+   * source's line and column positions provided. Arguments:
+   *
+   *   - line: The line number in the generated source.
+   *   - column: The column number in the generated source.
+   */
+
+  pub fn mapping_for_generated_position(&self, line: u32, column: u32) -> &Mapping {
+    let matcher = |mapping: &Mapping| -> Ordering {
+      (mapping.generated.line, mapping.generated.column).cmp(&(line, column))
+    };
+    match self.generated_mappings.binary_search_by(matcher) {
+      Ok(index) => &self.generated_mappings[index],
+      Err(index) => &self.generated_mappings[index]
+    }
+  }
+}
+
+macro_rules! assert_equal_mappings(
+  ($a:expr, $b:expr) => (
+    if $a != &$b {
+      panic!(format!("\n\n{:?}\n\n!=\n\n{:?}\n\n", $a, $b));
+    }
+  );
+);
+
+#[test]
+fn test_source_map_issue_64() {
+  let cache = consume(r#"{
+    "version": 3,
+    "file": "foo.js",
+    "sourceRoot": "http://example.com/",
+    "sources": ["/a"],
+    "names": [],
+    "mappings": "AACA",
+    "sourcesContent": ["foo"]
+  }"#).unwrap();
+
+  let expected = Mapping {
+    generated: CodePosition { line: 1, column: 0 },
+    original: CodePosition { line: 2, column: 0 },
+    source: "/a".into(),
+    name: "".into()
+  };
+  let actual = cache.mapping_for_generated_position(1, 0);
+  assert_equal_mappings!(actual, expected);
+}
+
+#[test]
+fn test_source_map_issue_72_duplicate_sources() {
+  let cache = consume(r#"{
+    "version": 3,
+    "file": "foo.js",
+    "sources": ["source1.js", "source1.js", "source3.js"],
+    "names": [],
+    "mappings": ";EAAC;;IAEE;;MEEE",
+    "sourceRoot": "http://example.com"
+  }"#).unwrap();
+
+
+  {
+    let expected = Mapping {
+      generated: CodePosition { line: 2, column: 2 },
+      original: CodePosition { line: 1, column: 1 },
+      source: "source1.js".into(),
+      name: "".into()
+    };
+    let actual = cache.mapping_for_generated_position(2, 2);
+    assert_equal_mappings!(actual, expected);
+  }
+
+  {
+    let expected = Mapping {
+      generated: CodePosition { line: 4, column: 4 },
+      original: CodePosition { line: 3, column: 3 },
+      source: "source1.js".into(),
+      name: "".into()
+    };
+    let actual = cache.mapping_for_generated_position(4, 4);
+    assert_equal_mappings!(actual, expected);
+  }
+
+  {
+    let expected = Mapping {
+      generated: CodePosition { line: 6, column: 6 },
+      original: CodePosition { line: 5, column: 5 },
+      source: "source3.js".into(),
+      name: "".into()
+    };
+    let actual = cache.mapping_for_generated_position(6, 6);
+    assert_equal_mappings!(actual, expected);
+  }
+}
+
+#[test]
+fn test_source_map_issue_72_duplicate_names() {
+  let cache = consume(r#"{
+    "version": 3,
+    "file": "foo.js",
+    "sources": ["source.js"],
+    "names": ["name1", "name1", "name3"],
+    "mappings": ";EAACA;;IAEEA;;MAEEE",
+    "sourceRoot": "http://example.com"
+  }"#).unwrap();
+
+  {
+    let expected = Mapping {
+      generated: CodePosition { line: 2, column: 2 },
+      original: CodePosition { line: 1, column: 1 },
+      source: "source.js".into(),
+      name: "name1".into()
+    };
+    let actual = cache.mapping_for_generated_position(2, 2);
+    assert_equal_mappings!(actual, expected);
+  }
+
+  {
+    let expected = Mapping {
+      generated: CodePosition { line: 4, column: 4 },
+      original: CodePosition { line: 3, column: 3 },
+      source: "source.js".into(),
+      name: "name1".into()
+    };
+    let actual = cache.mapping_for_generated_position(4, 4);
+    assert_equal_mappings!(actual, expected);
+  }
+
+  {
+    let expected = Mapping {
+      generated: CodePosition { line: 6, column: 6 },
+      original: CodePosition { line: 5, column: 5 },
+      source: "source.js".into(),
+      name: "name3".into()
+    };
+    let actual = cache.mapping_for_generated_position(6, 6);
+    assert_equal_mappings!(actual, expected);
+  }
+}

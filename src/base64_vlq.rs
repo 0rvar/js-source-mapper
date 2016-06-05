@@ -202,3 +202,32 @@ fn it_decodes_some_numbers() {
   assert_decodes_to!(b"k1mS", 298322);
   assert_decodes_to!(b"gkh9B", 1000000);
 }
+
+#[test]
+fn it_returns_sane_field_length() {
+  {
+    let result = decode(b"ABCDE").unwrap();
+    assert!(result.0 == 0);
+    assert!(result.1 == 1);
+  }
+  {
+    let result = decode(&b"ABCDE"[1..5]).unwrap();
+    assert!(result.0 == 0);
+    assert!(result.1 == 1);
+  }
+  {
+    let result = decode(&b"ABCDE"[2..5]).unwrap();
+    assert!(result.0 == 1);
+    assert!(result.1 == 1);
+  }
+  {
+    let result = decode(&b"ABCDE"[3..5]).unwrap();
+    assert!(result.0 == -1);
+    assert!(result.1 == 1);
+  }
+  {
+    let result = decode(&b"ABCDE"[4..5]).unwrap();
+    assert!(result.0 == 2);
+    assert!(result.1 == 1);
+  }
+}
