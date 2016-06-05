@@ -22,30 +22,37 @@ struct SourceMap {
   //sourcesContent: Option<vec<String>>,
 }
 
-#[derive(Eq, PartialEq, Debug)]
-struct CodePosition {
-  line: u32,
-  column: u32
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct CodePosition {
+  /** Line number in a code file, starting from 1 */
+  pub line: u32,
+  /** Column number in a code file, starting from 0 */
+  pub column: u32
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Mapping {
-  generated: CodePosition,
-  original: CodePosition,
-  source: String,
-  name: String
+  /** The position in the generated file */
+  pub generated: CodePosition,
+  /** The position in the corresponding original source file */
+  pub original: CodePosition,
+  /** The original source file */
+  pub source: String,
+  /** The original source name of the function/class, if applicable */
+  pub name: String
 }
 
 pub struct Cache {
   generated_mappings: Vec<Mapping>,
+  /** The path prefix of mapping source paths */
   pub source_root: String
 }
 
-/*
+/**
  * consume parses a SourceMap into a cache that can be queried for mappings
  *
  * The only parameter is the raw source map as a JSON string.
- * According to the spec, source maps have the following attributes:
+ * According to the [source map spec][source-map-spec], source maps have the following attributes:
  *
  *   - version: Which version of the source map spec this map is following.
  *   - sources: An array of URLs to the original source files.
@@ -55,21 +62,23 @@ pub struct Cache {
  *   - mappings: A string of base64 VLQs which contain the actual mappings.
  *   - file: Optional. The generated file this source map is associated with.
  *
- * Here is an example source map, taken from the source map spec[0]:
+ * Here is an example source map:
  *
+ * ```json
  *     {
- *       version : 3,
- *       file: "out.js",
- *       sourceRoot : "",
- *       sources: ["foo.js", "bar.js"],
- *       names: ["src", "maps", "are", "fun"],
- *       mappings: "AA,AB;;ABCDE;"
+ *       "version": 3,
+ *       "file": "out.js",
+ *       "sourceRoot" : "",
+ *       "sources": ["foo.js", "bar.js"],
+ *       "names": ["src", "maps", "are", "fun"],
+ *       "mappings": "AA,AB;;ABCDE;"
  *     }
+ * ```
  *
- * [0]: https://docs.google.com/document/d/1U1RGAehQwRypUTovF1KRlpiOFze0b-_2gc6fAH0KY0k/edit?pli=1#
+ * [source-map-spec]: https://docs.google.com/document/d/1U1RGAehQwRypUTovF1KRlpiOFze0b-_2gc6fAH0KY0k/edit?pli=1#
  */
-pub fn consume(map: &str) -> Result<Cache, String> {
-  let source_map: SourceMap = match json::decode(map) {
+pub fn consume(source_map_json: &str) -> Result<Cache, String> {
+  let source_map: SourceMap = match json::decode(source_map_json) {
     Ok(x) => x,
     Err(err) => return Err(format!("{}", err))
   };
@@ -176,28 +185,47 @@ fn parse_mappings(source_map: &SourceMap) -> Result<Cache, String>{
 
 
 impl Cache {
-  /*
-   * Returns the original source, line, and column information for the generated
-   * source's line and column positions provided. Arguments:
+  /**
+   * Returns the original source, line, column and name information for the generated
+   * source's line and column positions provided.
    *
-   *   - line: The line number in the generated source.
-   *   - column: The column number in the generated source.
+   * # Arguments
+   *
+   * * line: The line number in the generated source.
+   * * column: The column number in the generated source.
+   *
+   * # Examples
+   *
+   * ```
+   * use js_source_mapper::consume;
+   *
+   * let cache = consume(r#"{ "version": 3, "file": "foo.js", "sources": ["source.js"], "names": ["name1", "name1", "name3"], "mappings": ";EAACA;;IAEEA;;MAEEE", "sourceRoot": "http://example.com" }"#).unwrap();
+   *
+   * println!("{:?}", cache.mapping_for_generated_position(2, 2));
+   * // => Mapping {
+   * //   generated: CodePosition { line: 2, column: 2 },
+   * //   original: CodePosition { line: 1, column: 1 },
+   * //   source: "source.js"
+   * //   name: "name1"
+   * // }
+   * ```
+   *
    */
 
-  pub fn mapping_for_generated_position(&self, line: u32, column: u32) -> &Mapping {
+  pub fn mapping_for_generated_position(&self, line: u32, column: u32) -> Mapping {
     let matcher = |mapping: &Mapping| -> Ordering {
       (mapping.generated.line, mapping.generated.column).cmp(&(line, column))
     };
     match self.generated_mappings.binary_search_by(matcher) {
       Ok(index) => &self.generated_mappings[index],
       Err(index) => &self.generated_mappings[index]
-    }
+    }.clone()
   }
 }
 
 macro_rules! assert_equal_mappings(
   ($a:expr, $b:expr) => (
-    if $a != &$b {
+    if $a != $b {
       panic!(format!("\n\n{:?}\n\n!=\n\n{:?}\n\n", $a, $b));
     }
   );
