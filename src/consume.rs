@@ -180,6 +180,10 @@ fn parse_mappings(source_map: &SourceMap) -> Result<Cache, String>{
     }
   }
 
+  if generated_mappings.len() < 1 {
+    return Err("Source Map contains no mappings".to_owned());
+  }
+
   fn sort_key(mapping: &Mapping) -> (u32, u32) {
     (mapping.generated.line, mapping.generated.column)
   }
@@ -227,9 +231,10 @@ impl Cache {
     let matcher = |mapping: &Mapping| -> Ordering {
       (mapping.generated.line, mapping.generated.column).cmp(&(line, column))
     };
-    match self.generated_mappings.binary_search_by(matcher) {
+    let mappings = &self.generated_mappings;
+    match mappings.binary_search_by(matcher) {
       Ok(index) => &self.generated_mappings[index],
-      Err(index) => &self.generated_mappings[index]
+      Err(index) => &self.generated_mappings[if index > mappings.len() { mappings.len() - 1 } else { index }]
     }.clone()
   }
 }
@@ -397,6 +402,21 @@ fn it_does_not_panic_due_to_malformed_source_maps() {
   }"#);
   match cache_result {
     Ok(_) => panic!("Invalid source maps should be rejected"),
+    Err(_) => {}
+  }
+}
+
+#[test]
+fn it_returns_error_when_there_are_no_mappings() {
+  let cache_result = consume(r#"{
+    "version": 3,
+    "file": "foo.js",
+    "sources": ["source.js"],
+    "names": ["name1", "name1", "name3"],
+    "mappings": ";;;"
+  }"#);
+  match cache_result {
+    Ok(_) => panic!("Source maps with no mappings should be rejected"),
     Err(_) => {}
   }
 }
