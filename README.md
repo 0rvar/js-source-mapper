@@ -36,7 +36,7 @@ fn main() {
   let mapping = cache.mapping_for_generated_position(2, 2);
   assert!(mapping.original.line == 1);
   assert!(mapping.original.column == 1);
-  assert!(mapping.original.source == "source.js".into());
-  assert!(mapping.original.name == "name1".into());
+  assert!(mapping.source == "source.js".into());
+  assert!(mapping.name == "name1".into());
 }
 ```
