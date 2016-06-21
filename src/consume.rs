@@ -1,10 +1,24 @@
 use std::cmp::Ordering;
 
-use rustc_serialize::json;
+use rustc_serialize::{json, Decodable, Decoder};
 
 use base64_vlq;
 
 static SOURCE_MAP_VERSION: u32 = 3;
+
+enum FromStringLike { AsString(String) }
+impl Decodable for FromStringLike {
+  fn decode<D: Decoder>(d: &mut D) -> Result<FromStringLike, D::Error> {
+    Ok(FromStringLike::AsString(match try!(d.pop()) {
+      json::Json::String(s) => s,
+      json::Json::I64(i) => i.to_string(),
+      json::Json::U64(i) => i.to_string(),
+      json => {
+        return Err(d.error("Expected string or int as name"))
+      }
+    }))
+  }
+}
 
 #[allow(dead_code)]
 #[allow(non_snake_case)]
@@ -12,10 +26,9 @@ static SOURCE_MAP_VERSION: u32 = 3;
 struct SourceMap {
   version: u32,
   sources: Vec<String>,
-  names: Vec<String>,
+  names: Vec<FromStringLike>,
   sourceRoot: Option<String>,
-  mappings: String,
-  file: Option<String>
+  mappings: String
 
   // We skip this. Keeping megabytes of data that we do not care about
   // in memory seems reckless to caches.
@@ -169,7 +182,10 @@ fn parse_mappings(source_map: &SourceMap) -> Result<Cache, String>{
           // Original name.
           previous_name = ((previous_name as i32) + fields[4]) as u32;
           if previous_name < names_length {
-            mapping.name = source_map.names[previous_name as usize].to_owned();
+            mapping.name = match &source_map.names[previous_name as usize] {
+              &FromStringLike::FromString(ref string) => string.to_owned(),
+              &FromStringLike::FromInt(ref int) => int.to_string().to_owned()
+            }
           } else {
             return Err(format!("Invalid source map: reference to name index {} when name list length is {}", previous_name, names_length));
           }
