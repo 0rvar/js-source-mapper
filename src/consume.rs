@@ -160,7 +160,7 @@ fn parse_mappings(source_map: &SourceMap) -> Result<Cache, String>{
         // Original line.
         previous_original_line = ((previous_original_line as i32) + fields[2]) as u32;
         // Lines are stored 0-based
-        mapping.original.line = previous_original_line + 1;
+        mapping.original.line = previous_original_line.checked_add(1).ok_or("Line number overflowed")?;
 
         // Original column.
         previous_original_column = ((previous_original_column as i32) + fields[3]) as u32;
@@ -437,12 +437,30 @@ fn it_does_not_panic_when_querying_for_position_2() {
 
 #[test]
 fn it_does_not_panic_on_invalid_bit_shifts() {
-  consume(r#"{
+  match consume(r#"{
     "version": 3,
     "file": "foo.js",
     "sources": ["source.js"],
     "names": ["name1", "name1", "name3"],
     "mappings": "00000001",
     "sourceRoot": "http://example.com"
-  }"#).expect_err("Invalid VLQ mapping field");
+  }"#) {
+    Err(s) => assert!(s == "Invalid VLQ mapping field"),
+    _ => panic!("Invalid source map should fail to consume")
+  };
+}
+
+#[test]
+fn it_does_not_panic_from_add_overflow() {
+  match consume(r#"{
+    "version": 3,
+    "file": "foo.js",
+    "sources": ["source.js"],
+    "names": ["name1", "name1", "name3"],
+    "mappings": "BBDDDDDDBBBBBBBc;*;ZZBBBBBBBBBBv",
+    "sourceRoot": "http://example.com"
+  }"#) {
+    Err(s) => assert!(s == "Line number overflowed"),
+    _ => panic!("Invalid source map should fail to consume")
+  };
 }
