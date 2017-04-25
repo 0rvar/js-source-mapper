@@ -161,6 +161,9 @@ pub fn decode(encoded: &[u8]) -> Option<(i32, usize)> {
     digit &= VLQ_BASE_MASK;
     result = result + (digit << shift);
     shift += VLQ_BASE_SHIFT;
+    if shift >= 32 {
+      return None;
+    }
     if !continuation {
       break;
     }
@@ -230,4 +233,9 @@ fn it_returns_sane_field_length() {
     assert!(result.0 == 2);
     assert!(result.1 == 1);
   }
+}
+
+#[test]
+fn it_does_not_panic_on_long_strings() {
+  decode(b"00000000");
 }

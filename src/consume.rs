@@ -42,6 +42,7 @@ pub struct Mapping {
   pub name: String
 }
 
+#[derive(Debug)]
 pub struct Cache {
   generated_mappings: Vec<Mapping>,
   /** The path prefix of mapping source paths */
@@ -432,4 +433,16 @@ fn it_does_not_panic_when_querying_for_position_2() {
     "sourceRoot": "http://example.com"
   }"#).unwrap();
   cache.mapping_for_generated_position(2, 2);
+}
+
+#[test]
+fn it_does_not_panic_on_invalid_bit_shifts() {
+  consume(r#"{
+    "version": 3,
+    "file": "foo.js",
+    "sources": ["source.js"],
+    "names": ["name1", "name1", "name3"],
+    "mappings": "00000001",
+    "sourceRoot": "http://example.com"
+  }"#).expect_err("Invalid VLQ mapping field");
 }
