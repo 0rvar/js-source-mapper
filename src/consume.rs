@@ -234,7 +234,7 @@ impl Cache {
     let mappings = &self.generated_mappings;
     match mappings.binary_search_by(matcher) {
       Ok(index) => &self.generated_mappings[index],
-      Err(index) => &self.generated_mappings[if index > mappings.len() { mappings.len() - 1 } else { index }]
+      Err(index) => &self.generated_mappings[if index >= mappings.len() { mappings.len() - 1 } else { index }]
     }.clone()
   }
 }
@@ -419,4 +419,17 @@ fn it_returns_error_when_there_are_no_mappings() {
     Ok(_) => panic!("Source maps with no mappings should be rejected"),
     Err(_) => {}
   }
+}
+
+#[test]
+fn it_does_not_panic_when_querying_for_position_2() {
+  let cache = consume(r#"{
+    "version": 3,
+    "file": "foo.js",
+    "sources": ["source.js"],
+    "names": ["name1", "name1", "name3"],
+    "mappings": "Z",
+    "sourceRoot": "http://example.com"
+  }"#).unwrap();
+  cache.mapping_for_generated_position(2, 2);
 }
