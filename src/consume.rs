@@ -424,6 +424,7 @@ fn it_returns_error_when_there_are_no_mappings() {
 
 #[test]
 fn it_does_not_panic_when_querying_for_position_2() {
+  // Found with cargo-fuzz
   let cache = consume(r#"{
     "version": 3,
     "file": "foo.js",
@@ -437,6 +438,7 @@ fn it_does_not_panic_when_querying_for_position_2() {
 
 #[test]
 fn it_does_not_panic_on_invalid_bit_shifts() {
+  // Found with cargo-fuzz
   match consume(r#"{
     "version": 3,
     "file": "foo.js",
@@ -452,6 +454,7 @@ fn it_does_not_panic_on_invalid_bit_shifts() {
 
 #[test]
 fn it_does_not_panic_from_add_overflow() {
+  // Found with cargo-fuzz
   match consume(r#"{
     "version": 3,
     "file": "foo.js",
