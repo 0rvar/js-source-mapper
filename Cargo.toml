@@ -11,7 +11,9 @@ A rust library for consuming JavaScript source maps with a focus on performance.
 """
 
 [dependencies]
-rustc-serialize = "0.3"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
 
 [dev-dependencies]
-quickcheck = "0.2"
+quickcheck = "0.3"

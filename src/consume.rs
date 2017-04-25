@@ -1,14 +1,14 @@
 use std::cmp::Ordering;
 
-use rustc_serialize::json;
+extern crate serde;
+extern crate serde_json;
 
 use base64_vlq;
 
 static SOURCE_MAP_VERSION: u32 = 3;
 
-#[allow(dead_code)]
 #[allow(non_snake_case)]
-#[derive(RustcDecodable)]
+#[derive(Deserialize, Debug)]
 struct SourceMap {
   version: u32,
   sources: Vec<String>,
@@ -78,7 +78,7 @@ pub struct Cache {
  * [source-map-spec]: https://docs.google.com/document/d/1U1RGAehQwRypUTovF1KRlpiOFze0b-_2gc6fAH0KY0k/edit?pli=1#
  */
 pub fn consume(source_map_json: &str) -> Result<Cache, String> {
-  let source_map: SourceMap = match json::decode(source_map_json) {
+  let source_map: SourceMap = match serde_json::from_str(source_map_json) {
     Ok(x) => x,
     Err(err) => return Err(format!("{}", err))
   };
