@@ -40,3 +40,12 @@ fn main() {
   assert!(mapping.name == "name1".into());
 }
 ```
+
+## Development
+
+### Fuzzing
+To run cargo-fuzz on Windows, run the docker image specified in etc/docker.
+The following command is handy:
+```
+docker run --rm -v <full_path_to_project_root>:/project -w /project cargo-fuzz cargo fuzz run fuzzer_script_1
+```
