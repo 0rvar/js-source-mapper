@@ -240,6 +240,7 @@ impl Cache {
   }
 }
 
+#[cfg(test)]
 macro_rules! assert_equal_mappings(
   ($a:expr, $b:expr) => (
     if $a != $b {

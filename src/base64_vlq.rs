@@ -107,11 +107,13 @@ pub fn encode(value: i32) -> Option<Vec<u8>> {
   Some(encoded)
 }
 
+#[cfg(test)]
 macro_rules! assert_encodes_to(
   ($number:expr, $string:expr) => (
     assert!(encode($number) == Some($string.into()))
   );
 );
+
 #[test]
 fn it_encodes_some_numbers() {
   assert_encodes_to!(-1000000, "hkh9B");
@@ -172,6 +174,7 @@ pub fn decode(encoded: &[u8]) -> Option<(i32, usize)> {
   Some((from_vql(result), characters_read))
 }
 
+#[cfg(test)]
 macro_rules! assert_decodes_to(
   ($str_slice:expr, $number:expr) => (
     assert!(decode($str_slice).unwrap().0 == $number)
