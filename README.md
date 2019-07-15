@@ -4,7 +4,6 @@ A rust library for consuming JavaScript source maps with a focus on performance.
 Supports [Source Map revision 3](https://docs.google.com/document/d/1U1RGAehQwRypUTovF1KRlpiOFze0b-_2gc6fAH0KY0k/edit).
 
 [![Build status](https://ci.appveyor.com/api/projects/status/0biffgxl3p49ici3?svg=true)](https://ci.appveyor.com/project/0rvar/js-source-mapper)
-[![Coverage Status](https://coveralls.io/repos/github/awestroke/js-source-mapper/badge.svg?branch=master)](https://coveralls.io/github/0rvar/js-source-mapper?branch=master)
 [![Crates.io](https://img.shields.io/crates/v/js-source-mapper.svg)](https://crates.io/crates/js-source-mapper)
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
